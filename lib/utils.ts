@@ -5,8 +5,16 @@ export function formatNumber(num: number): string {
   }).format(num);
 }
 
-export function formatDate(dateString: string): string {
+export function formatDate(dateString: string | null | undefined): string {
+  // Handle null, undefined, or empty strings
+  if (!dateString) {
+    return '';
+  }
   const date = new Date(dateString);
+  // Check if date is valid
+  if (isNaN(date.getTime())) {
+    return dateString; // Return original string if date is invalid
+  }
   return new Intl.DateTimeFormat('de-DE', {
     day: '2-digit',
     month: 'short',

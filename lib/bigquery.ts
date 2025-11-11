@@ -24,15 +24,36 @@ const TABLE_PROJECTS = 'automation_eval';
 const TABLE_WEEKLY = 'automation_eval_kw';
 
 export async function getProjectPerformance(): Promise<any[]> {
+  // Get the latest cumulative values per project from weekly data
   const query = `
+    WITH latest_week_per_project AS (
+      SELECT 
+        project,
+        iso_year,
+        iso_week,
+        ROW_NUMBER() OVER (PARTITION BY project ORDER BY iso_year DESC, iso_week DESC) as rn
+      FROM \`${bigquery.projectId}.${DATASET}.${TABLE_WEEKLY}\`
+    ),
+    latest_data AS (
+      SELECT 
+        w.project,
+        w.cum_revenue,
+        w.cum_cost,
+        w.roi
+      FROM \`${bigquery.projectId}.${DATASET}.${TABLE_WEEKLY}\` w
+      INNER JOIN latest_week_per_project lw
+        ON w.project = lw.project 
+        AND w.iso_year = lw.iso_year 
+        AND w.iso_week = lw.iso_week
+      WHERE lw.rn = 1
+    )
     SELECT 
       project,
-      total_net_revenue,
-      total_cost,
-      roi,
-      created_at
-    FROM \`${bigquery.projectId}.${DATASET}.${TABLE_PROJECTS}\`
-    ORDER BY total_net_revenue DESC
+      cum_revenue as total_net_revenue,
+      cum_cost as total_cost,
+      roi
+    FROM latest_data
+    ORDER BY cum_revenue DESC
   `;
 
   const [rows] = await bigquery.query(query);
@@ -42,7 +63,6 @@ export async function getProjectPerformance(): Promise<any[]> {
     total_net_revenue: parseFloat(row.total_net_revenue) || 0,
     total_cost: parseFloat(row.total_cost) || 0,
     roi: parseFloat(row.roi) || 0,
-    created_at: row.created_at,
   }));
 }
 
@@ -158,20 +178,27 @@ export async function getCumulativeData(project?: string): Promise<any[]> {
 
 export async function getLastWeekImpact(): Promise<any[]> {
   const query = `
-    WITH latest_week AS (
+    WITH ranked_weeks AS (
       SELECT 
-        MAX(iso_year) as max_year,
-        MAX(iso_week) as max_week
+        iso_year,
+        iso_week,
+        ROW_NUMBER() OVER (ORDER BY iso_year DESC, iso_week DESC) as rank
       FROM \`${bigquery.projectId}.${DATASET}.${TABLE_WEEKLY}\`
+      GROUP BY iso_year, iso_week
+    ),
+    last_week AS (
+      SELECT iso_year as last_year, iso_week as last_week
+      FROM ranked_weeks
+      WHERE rank = 2
     )
     SELECT 
       w.project,
       w.weekly_revenue,
       w.week_start
     FROM \`${bigquery.projectId}.${DATASET}.${TABLE_WEEKLY}\` w
-    CROSS JOIN latest_week lw
-    WHERE w.iso_year = lw.max_year 
-      AND w.iso_week = lw.max_week
+    CROSS JOIN last_week lw
+    WHERE w.iso_year = lw.last_year 
+      AND w.iso_week = lw.last_week
     ORDER BY w.weekly_revenue DESC
   `;
 

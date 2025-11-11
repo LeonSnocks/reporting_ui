@@ -18,21 +18,31 @@ export default function Dashboard() {
     lastWeek: 0,
   });
   const [lastWeekImpact, setLastWeekImpact] = useState<ImpactData[]>([]);
-  const [selectedProject, setSelectedProject] = useState<string>('dco');
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const handleProjectSelect = (project: string) => {
+    // Toggle: if clicking the same project, deselect it
+    if (selectedProject === project) {
+      setSelectedProject(null);
+    } else {
+      setSelectedProject(project);
+    }
+  };
 
   const fetchAllData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Fetch all data in parallel
+      // Fetch all data in parallel - if no project selected, fetch all data
+      const projectParam = selectedProject ? `?project=${selectedProject}` : '';
       const [projectsRes, weeklyRes, cumulativeRes, impactValuesRes, lastWeekImpactRes] =
         await Promise.all([
           fetch('/api/projects'),
-          fetch(`/api/weekly?project=${selectedProject}`),
-          fetch(`/api/cumulative?project=${selectedProject}`),
+          fetch(`/api/weekly${projectParam}`),
+          fetch(`/api/cumulative${projectParam}`),
           fetch('/api/impact?type=values'),
           fetch('/api/impact'),
         ]);
@@ -105,25 +115,33 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 items-stretch">
           {/* Project Performance Table */}
           <div className="lg:col-span-1">
             <ProjectPerformanceTable
               data={projectPerformance}
               selectedProject={selectedProject}
-              onProjectSelect={setSelectedProject}
+              onProjectSelect={handleProjectSelect}
             />
           </div>
 
           {/* Weekly Bar Chart */}
           <div className="lg:col-span-1">
-            <WeeklyBarChart data={weeklyData} project={selectedProject} />
+            <WeeklyBarChart 
+              data={weeklyData} 
+              project={selectedProject}
+              allProjects={projectPerformance.map(p => p.project)}
+            />
           </div>
         </div>
 
         {/* Cumulative Line Chart - Full Width */}
         <div className="mb-6">
-          <CumulativeLineChart data={cumulativeData} project={selectedProject} />
+          <CumulativeLineChart 
+            data={cumulativeData} 
+            project={selectedProject}
+            allProjects={projectPerformance.map(p => p.project)}
+          />
         </div>
 
         {/* Bottom Section */}
@@ -140,7 +158,11 @@ export default function Dashboard() {
 
           {/* Last Week Impact Table */}
           <div className="lg:col-span-1">
-            <LastWeekImpactTable data={lastWeekImpact} />
+            <LastWeekImpactTable 
+              data={lastWeekImpact} 
+              selectedProject={selectedProject}
+              onProjectSelect={handleProjectSelect}
+            />
           </div>
         </div>
       </main>

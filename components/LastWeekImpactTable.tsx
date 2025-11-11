@@ -5,9 +5,11 @@ import { formatNumber } from '@/lib/utils';
 
 interface LastWeekImpactTableProps {
   data: ImpactData[];
+  selectedProject?: string | null;
+  onProjectSelect?: (project: string) => void;
 }
 
-export default function LastWeekImpactTable({ data }: LastWeekImpactTableProps) {
+export default function LastWeekImpactTable({ data, selectedProject, onProjectSelect }: LastWeekImpactTableProps) {
   if (!data || data.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -34,7 +36,13 @@ export default function LastWeekImpactTable({ data }: LastWeekImpactTableProps) 
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {data.map((item) => (
-              <tr key={item.project} className="hover:bg-gray-50 transition-colors">
+              <tr 
+                key={item.project} 
+                className={`hover:bg-gray-50 transition-colors cursor-pointer ${
+                  selectedProject === item.project ? 'bg-blue-50' : ''
+                }`}
+                onClick={() => onProjectSelect?.(item.project)}
+              >
                 <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                   {item.project}
                 </td>

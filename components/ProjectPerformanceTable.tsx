@@ -5,7 +5,7 @@ import { formatNumber } from '@/lib/utils';
 
 interface ProjectPerformanceTableProps {
   data: ProjectPerformance[];
-  selectedProject?: string;
+  selectedProject?: string | null;
   onProjectSelect?: (project: string) => void;
 }
 
@@ -24,7 +24,7 @@ export default function ProjectPerformanceTable({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="bg-white rounded-lg shadow-md p-6 h-full flex flex-col">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Projekt Performance</h2>
       <div className="overflow-x-auto">
         <table className="w-full table-auto">
